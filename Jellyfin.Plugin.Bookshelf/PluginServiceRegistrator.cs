@@ -2,8 +2,10 @@ using Jellyfin.Plugin.Bookshelf.Providers;
 using Jellyfin.Plugin.Bookshelf.Providers.ComicBookInfo;
 using Jellyfin.Plugin.Bookshelf.Providers.ComicInfo;
 using Jellyfin.Plugin.Bookshelf.Providers.ComicVine;
+using Jellyfin.Plugin.Bookshelf.Reader;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jellyfin.Plugin.Bookshelf
@@ -16,6 +18,8 @@ namespace Jellyfin.Plugin.Bookshelf
         /// <inheritdoc />
         public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
         {
+            serviceCollection.AddTransient<IStartupFilter, ReaderStartupFilter>();
+
             // register the proxy local metadata provider for comic files
             serviceCollection.AddSingleton<ComicFileProvider>();
 

@@ -229,3 +229,7 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+
+# Plugin reader development dependencies and intermediate output
+Reader/node_modules/
+Reader/build/

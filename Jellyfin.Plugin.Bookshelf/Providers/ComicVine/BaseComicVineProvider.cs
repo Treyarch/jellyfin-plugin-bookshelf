@@ -75,7 +75,11 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.ComicVine
 
                 if (string.IsNullOrWhiteSpace(itemApiId))
                 {
-                    _logger.LogInformation("Couldn't get API id from provider id {ProviderId}.", providerId);
+                    if (_logger.IsEnabled(LogLevel.Information))
+                    {
+                        _logger.LogInformation("Couldn't get API id from provider id {ProviderId}.", providerId);
+                    }
+
                     return default;
                 }
 
@@ -85,11 +89,18 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.ComicVine
 
                     if (itemDetails == null)
                     {
-                        _logger.LogInformation("Resource with id {ApiId} was not found.", itemApiId);
+                        if (_logger.IsEnabled(LogLevel.Information))
+                        {
+                            _logger.LogInformation("Resource with id {ApiId} was not found.", itemApiId);
+                        }
+
                         return default;
                     }
 
-                    _logger.LogInformation("Adding resource with id {ApiId} to the cache.", itemApiId);
+                    if (_logger.IsEnabled(LogLevel.Information))
+                    {
+                        _logger.LogInformation("Adding resource with id {ApiId} to the cache.", itemApiId);
+                    }
 
                     await _comicVineMetadataCacheManager.AddToCache<T>(itemApiId, itemDetails, cancellationToken).ConfigureAwait(false);
 
@@ -97,7 +108,10 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.ComicVine
                 }
                 else
                 {
-                    _logger.LogInformation("Found resource with id {ApiId} in the cache.", itemApiId);
+                    if (_logger.IsEnabled(LogLevel.Information))
+                    {
+                        _logger.LogInformation("Found resource with id {ApiId} in the cache.", itemApiId);
+                    }
 
                     return await _comicVineMetadataCacheManager.GetFromCache<T>(itemApiId, cancellationToken).ConfigureAwait(false);
                 }

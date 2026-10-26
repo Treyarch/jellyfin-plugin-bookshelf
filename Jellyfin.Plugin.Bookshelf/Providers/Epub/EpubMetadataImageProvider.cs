@@ -49,13 +49,13 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.Epub
         {
             if (string.Equals(Path.GetExtension(item.Path), ".epub", StringComparison.OrdinalIgnoreCase))
             {
-                return GetFromZip(item);
+                return GetFromZip(item, cancellationToken);
             }
 
             return Task.FromResult(new DynamicImageResponse { HasImage = false });
         }
 
-        private async Task<DynamicImageResponse> LoadCover(ZipArchive epub, XmlDocument opf, string opfRootDirectory)
+        private async Task<DynamicImageResponse> LoadCover(ZipArchive epub, XmlDocument opf, string opfRootDirectory, CancellationToken cancellationToken)
         {
             var utilities = new OpfReader<EpubMetadataImageProvider>(opf, _logger);
             var coverRef = utilities.ReadCoverPath(opfRootDirectory);
@@ -73,9 +73,9 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.Epub
             }
 
             var memoryStream = new MemoryStream();
-            using (var coverStream = coverFile.Open())
+            using (var coverStream = await coverFile.OpenAsync(cancellationToken).ConfigureAwait(false))
             {
-                await coverStream.CopyToAsync(memoryStream)
+                await coverStream.CopyToAsync(memoryStream, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -91,9 +91,9 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.Epub
             return response;
         }
 
-        private async Task<DynamicImageResponse> GetFromZip(BaseItem item)
+        private async Task<DynamicImageResponse> GetFromZip(BaseItem item, CancellationToken cancellationToken)
         {
-            using var epub = ZipFile.OpenRead(item.Path);
+            using var epub = await ZipFile.OpenReadAsync(item.Path, cancellationToken).ConfigureAwait(false);
 
             var opfFilePath = EpubUtils.ReadContentFilePath(epub);
             if (opfFilePath == null)
@@ -113,12 +113,12 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.Epub
                 return new DynamicImageResponse { HasImage = false };
             }
 
-            using var opfStream = opfFile.Open();
+            using var opfStream = await opfFile.OpenAsync(cancellationToken).ConfigureAwait(false);
 
             var opfDocument = new XmlDocument();
             opfDocument.Load(opfStream);
 
-            return await LoadCover(epub, opfDocument, opfRootDirectory).ConfigureAwait(false);
+            return await LoadCover(epub, opfDocument, opfRootDirectory, cancellationToken).ConfigureAwait(false);
         }
     }
 }

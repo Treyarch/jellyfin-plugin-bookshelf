@@ -17,6 +17,22 @@
 </a>
 </p>
 
+## Compatibility
+
+This fork targets **Jellyfin Server 12.3+ (12.x)** and **.NET 10**. Builds for
+Jellyfin 10.11 remain on the original upstream history; this build does not load
+on 10.x. Compatibility with newer releases must be verified before use.
+
+Jellyfin 12 moved much of Bookshelf's local metadata support into the server and
+split the online providers into separate plugins. This fork retains the existing
+Bookshelf providers for users who want them together. Avoid enabling both this
+fork and the standalone GoogleBooks/ComicVine plugins. Select the intended local
+metadata/image providers in the library settings to avoid duplicate work.
+
+The plugin adds a vertical-scrolling toggle to Jellyfin's existing comic, PDF
+and EPUB readers. The reader, existing icons and paged controls remain in place.
+No separate web client installation is required.
+
 ## About
 
 The Jellyfin Bookshelf plugin enables the collection of eBooks & AudioBooks, with the latter being able to be played through Jellyfin.
@@ -66,12 +82,50 @@ To use the Comic Vine metadata provider, you will need to set an API key on the 
 
 1. Clone this repository
 
-2. Ensure you have .NET Core SDK setup and installed
+2. Ensure you have the .NET 10 SDK installed
 
 3. Build the plugin with following command:
 
 ```bash
-dotnet publish --configuration Release --output bin
+dotnet publish Jellyfin.Plugin.Bookshelf --configuration Release --output bin
 ```
 
-4. Place the resulting `Jellyfin.Plugin.Bookshelf.dll` file in a folder called `plugins/` inside your Jellyfin installation / data directory.
+4. Stop Jellyfin and place `Jellyfin.Plugin.Bookshelf.dll` and `SharpCompress.dll`
+   from `bin/` in a dedicated `plugins/Bookshelf/` directory under Jellyfin's data
+   directory. Replace the previous Bookshelf directory rather than mixing builds.
+   Do not copy Jellyfin's own assemblies from the publish output.
+5. Start Jellyfin and check that Bookshelf appears as Active in Dashboard → Plugins.
+
+## Validation
+
+```bash
+dotnet test --configuration Release
+python3 scripts/smoke-test.py
+```
+
+The smoke test requires Docker, Python 3 and the .NET 10 SDK. It creates an isolated
+Jellyfin 12.3 server bound to localhost, validates plugin loading and configuration,
+scans CBZ, CBR, EPUB and PDF fixtures, checks metadata and available covers, then
+removes the test container and files. It downloads parser fixtures from pinned
+SharpCompress and PDF.js revisions. `--keep` retains the server for manual testing;
+`--port` overrides the default port 18097. The private session file contains a test
+access token; do not commit it.
+
+## Vertical reading mode
+
+Install the plugin as above, open a book normally, and use the added **Vertical
+scrolling** icon in the existing reader toolbar. The original controls remain
+available. Continuous pages have zero layout gaps. See [reader details and client
+compatibility](docs/reader.md) and [Jellyfin 12 validation](docs/compatibility.md).
+
+To change the small embedded reader extension during development:
+
+```bash
+npm ci --prefix Reader
+npm test --prefix Reader
+npm run build --prefix Reader
+dotnet test --configuration Release
+```
+
+The generated script and stylesheet are embedded in the DLL and checked in, so a
+normal plugin build/install does not require Node.js.

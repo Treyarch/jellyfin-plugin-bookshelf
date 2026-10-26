@@ -12,6 +12,7 @@ using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.IO;
 using Microsoft.Extensions.Logging;
 using SharpCompress.Archives.Zip;
+using SharpCompress.Common.Zip;
 
 namespace Jellyfin.Plugin.Bookshelf.Providers.ComicBookInfo
 {
@@ -50,14 +51,18 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.ComicBookInfo
             {
                 Stream stream = File.OpenRead(path);
                 await using (stream.ConfigureAwait(false))
-                using (var archive = ZipArchive.Open(stream)) // not yet async: https://github.com/adamhathcock/sharpcompress/pull/565
+                using (var archive = ZipArchive.OpenArchive(stream))
                 {
                     if (archive.IsComplete)
                     {
-                        var volume = archive.Volumes.First();
+                        var volume = archive.Volumes.Cast<ZipVolume>().First();
                         if (volume.Comment is null)
                         {
-                            _logger.LogInformation("{Path} does not contain any ComicBookInfo metadata", info.Path);
+                            if (_logger.IsEnabled(LogLevel.Information))
+                            {
+                                _logger.LogInformation("{Path} does not contain any ComicBookInfo metadata", info.Path);
+                            }
+
                             return new MetadataResult<Book> { HasMetadata = false };
                         }
 

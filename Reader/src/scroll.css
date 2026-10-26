@@ -1,0 +1,27 @@
+.bookshelf-vertical {
+    position: relative;
+    top: env(safe-area-inset-top);
+    width: 100%;
+    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+.bookshelf-vertical .bookPages {
+    position: relative;
+    width: 100%; height: 100%;
+    margin: 0; padding: 0; border: 0; gap: 0;
+    overflow: auto; overflow-anchor: none;
+    touch-action: pan-y pinch-zoom;
+}
+.bookshelf-vertical .bookPage {
+    display: block; width: 100%;
+    margin: 0; padding: 0; border: 0;
+    line-height: 0;
+}
+.bookshelf-vertical .bookPage > img {
+    display: block; width: 100%; height: 100%;
+    margin: 0; padding: 0; border: 0;
+}
+.bookshelf-vertical-counter { position: absolute; bottom: 0; z-index: 1; pointer-events: none; }
+.bookshelf-vertical-button[aria-pressed="true"] { color: #00a4dc; }
+
+#bookPlayerContainer.bookshelf-epub-vertical .epub-view, #bookPlayerContainer.bookshelf-epub-vertical iframe { display: block; margin: 0; padding: 0; border: 0; }
+.bookshelf-vertical .bookPage > canvas { display: block; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; }

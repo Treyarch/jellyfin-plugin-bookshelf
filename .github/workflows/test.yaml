@@ -14,5 +14,20 @@ on:
   workflow_dispatch:
 
 jobs:
+  reader:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: Reader/package-lock.json
+      - run: npm ci --prefix Reader
+      - run: npm test --prefix Reader
+      - run: npm run build --prefix Reader
+      - run: git diff --exit-code -- Jellyfin.Plugin.Bookshelf/Reader/scroll.js Jellyfin.Plugin.Bookshelf/Reader/scroll.css
   call:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/test.yaml@master
+    with:
+      dotnet-version: "10.0.x"

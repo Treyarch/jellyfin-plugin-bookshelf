@@ -41,7 +41,11 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.ComicInfo
 
             if (comicInfoXml is null)
             {
-                _logger.LogInformation("Could not load ComicInfo metadata for {Path} from XML file", info.Path);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("Could not load ComicInfo metadata for {Path} from XML file", info.Path);
+                }
+
                 return new MetadataResult<Book> { HasMetadata = false };
             }
 
@@ -85,14 +89,15 @@ namespace Jellyfin.Plugin.Bookshelf.Providers.ComicInfo
                 // Open the xml
                 using var reader = XmlReader.Create(path, new XmlReaderSettings { Async = true });
 
-                var comicInfoXml = XDocument.LoadAsync(reader, LoadOptions.None, cancellationToken);
-
-                // Read data from XML
-                return await comicInfoXml.ConfigureAwait(false);
+                return await XDocument.LoadAsync(reader, LoadOptions.None, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e)
             {
-                _logger.LogInformation(e, "Could not load external xml from {Path}. This could mean there is no separate ComicInfo metadata file for this comic. Maybe the metadata is bundled within the comic", path);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation(e, "Could not load external xml from {Path}. This could mean there is no separate ComicInfo metadata file for this comic. Maybe the metadata is bundled within the comic", path);
+                }
+
                 return null;
             }
         }

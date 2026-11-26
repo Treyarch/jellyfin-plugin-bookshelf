@@ -1,20 +1,25 @@
 <h1 align="center">Jellyfin Bookshelf Plugin</h1>
-<h3 align="center">Part of the <a href="https://jellyfin.org/">Jellyfin Project</a></h3>
+<h3 align="center">A Bookshelf fork for <a href="https://jellyfin.org/">Jellyfin</a></h3>
 
 <p align="center">
 
 <img alt="Logo Banner" src="https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/banner-logo-solid.svg?sanitize=true"/>
 <br/>
 <br/>
-<a href="https://github.com/jellyfin/jellyfin-plugin-bookshelf/actions?query=workflow%3A%22Test+Build+Plugin%22">
-<img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/jellyfin/jellyfin-plugin-bookshelf/Test%20Build%20Plugin.svg">
+<a href="https://github.com/Treyarch/jellyfin-plugin-bookshelf/actions/workflows/test.yaml">
+<img alt="Plugin test status" src="https://github.com/Treyarch/jellyfin-plugin-bookshelf/actions/workflows/test.yaml/badge.svg">
 </a>
-<a href="https://github.com/jellyfin/jellyfin-plugin-bookshelf">
-<img alt="MIT License" src="https://img.shields.io/github/license/jellyfin/jellyfin-plugin-bookshelf.svg"/>
+<a href="LICENSE">
+<img alt="MIT License" src="https://img.shields.io/github/license/Treyarch/jellyfin-plugin-bookshelf.svg"/>
 </a>
 <a href="https://github.com/Treyarch/jellyfin-plugin-bookshelf/releases">
-<img alt="Current Release" src="https://img.shields.io/github/release/Treyarch/jellyfin-plugin-bookshelf.svg"/>
+<img alt="Current release" src="https://img.shields.io/github/v/release/Treyarch/jellyfin-plugin-bookshelf"/>
 </a>
+</p>
+
+<p align="center">
+<a href="https://github.com/Treyarch/jellyfin-plugin-bookshelf">Repository</a> ·
+<a href="https://github.com/Treyarch/jellyfin-plugin-bookshelf/issues">Issues</a>
 </p>
 
 ## Compatibility

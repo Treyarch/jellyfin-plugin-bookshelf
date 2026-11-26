@@ -12,8 +12,8 @@
 <a href="https://github.com/jellyfin/jellyfin-plugin-bookshelf">
 <img alt="MIT License" src="https://img.shields.io/github/license/jellyfin/jellyfin-plugin-bookshelf.svg"/>
 </a>
-<a href="https://github.com/jellyfin/jellyfin-plugin-bookshelf/releases">
-<img alt="Current Release" src="https://img.shields.io/github/release/jellyfin/jellyfin-plugin-bookshelf.svg"/>
+<a href="https://github.com/Treyarch/jellyfin-plugin-bookshelf/releases">
+<img alt="Current Release" src="https://img.shields.io/github/release/Treyarch/jellyfin-plugin-bookshelf.svg"/>
 </a>
 </p>
 
@@ -77,6 +77,17 @@ These Metadata providers will check online services for metadata.
 - Comic Vine
 
 To use the Comic Vine metadata provider, you will need to set an API key on the plugin's configuration page.
+
+## Install from the Jellyfin catalog
+
+1. In Jellyfin, go to **Dashboard → Plugins → Manage Repositories** and add a repository named **Bookshelf**.
+2. Enter this repository URL and save it.
+
+   ```text
+   https://raw.githubusercontent.com/Treyarch/jellyfin-plugin-bookshelf/master/manifest.json
+   ```
+
+3. Open the plugin catalog, install **Bookshelf** from the repository you added, then restart Jellyfin.
 
 ## Build & Installation Process
 

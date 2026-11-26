@@ -1,0 +1,20 @@
+[
+    {
+        "guid": "9c4e63f1-031b-4f25-988b-4f7d78a8b53e",
+        "name": "Bookshelf",
+        "description": "Book metadata providers and reader controls for comics, PDFs, and EPUBs.",
+        "overview": "Manage your books",
+        "owner": "Treyarch",
+        "category": "Books",
+        "versions": [
+            {
+                "version": "14.1.0.0",
+                "changelog": "Add First Page and Last Page buttons for comics, PDFs, and EPUBs in paged and vertical modes.",
+                "targetAbi": "12.3.0.0",
+                "sourceUrl": "https://github.com/Treyarch/jellyfin-plugin-bookshelf/releases/download/v14.1/Bookshelf-14.1.0.0.zip",
+                "checksum": "ace6b9a6aa34fe50e2cbec62538814a0",
+                "timestamp": "2026-11-26T17:29:40Z"
+            }
+        ]
+    }
+]

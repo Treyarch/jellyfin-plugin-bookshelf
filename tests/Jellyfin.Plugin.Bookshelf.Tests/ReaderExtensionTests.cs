@@ -31,7 +31,9 @@ public sealed class ReaderExtensionTests : IDisposable
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body);
         var html = await reader.ReadToEndAsync();
-        Assert.Contains(baseUrl + "/Bookshelf/Reader/scroll.js?v=14", html);
+        var version = typeof(ReaderStartupFilter).Assembly.GetName().Version;
+        Assert.Contains($"{baseUrl}/Bookshelf/Reader/scroll.js?v={version}", html);
+        Assert.Contains($"{baseUrl}/Bookshelf/Reader/scroll.css?v={version}", html);
         Assert.True(html.IndexOf("scroll.js", StringComparison.Ordinal) < html.IndexOf("runtime.js", StringComparison.Ordinal));
         Assert.Contains("Stock reader", html);
         Assert.Equal(Index, await File.ReadAllTextAsync(Path.Combine(_directory, "index.html")));

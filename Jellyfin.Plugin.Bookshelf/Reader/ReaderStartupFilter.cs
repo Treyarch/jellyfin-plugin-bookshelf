@@ -96,7 +96,8 @@ namespace Jellyfin.Plugin.Bookshelf.Reader
                         if (insertion >= 0)
                         {
                             var url = WebUtility.HtmlEncode(prefix + "/Bookshelf/Reader/");
-                            var extension = $"<link rel=\"stylesheet\" href=\"{url}scroll.css?v=14\"><script src=\"{url}scroll.js?v=14\"></script>";
+                            var version = typeof(ReaderStartupFilter).Assembly.GetName().Version;
+                            var extension = $"<link rel=\"stylesheet\" href=\"{url}scroll.css?v={version}\"><script src=\"{url}scroll.js?v={version}\"></script>";
                             bytes = Encoding.UTF8.GetBytes(html.Insert(insertion, extension));
                             context.Response.Headers.Remove("ETag");
                             context.Response.Headers.Remove("Last-Modified");

@@ -16,11 +16,13 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from xml.etree import ElementTree
 import zipfile
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ID = "9c4e63f1-031b-4f25-988b-4f7d78a8b53e"
+PLUGIN_VERSION = ElementTree.parse(ROOT / 'Directory.Build.props').findtext('./PropertyGroup/Version')
 
 
 def run(*args):
@@ -119,7 +121,7 @@ def main():
         config = request(f'/Plugins/{PLUGIN_ID}/Configuration')
         request(f'/Plugins/{PLUGIN_ID}/Configuration', config)
         assert b'ComicVine' in request('/web/ConfigurationPage?name=Bookshelf', raw=True)
-        assert b'Bookshelf/Reader/scroll.js?v=14' in request('/web/index.html', raw=True)
+        assert f'Bookshelf/Reader/scroll.js?v={PLUGIN_VERSION}'.encode() in request('/web/index.html', raw=True)
         assert request('/Bookshelf/Reader/scroll.js', raw=True)
         assert request('/Bookshelf/Reader/scroll.css', raw=True)
         # Select this fork's image providers and disable remote metadata lookups.
@@ -145,7 +147,7 @@ def main():
                 continue
             assert request(f'/Items/{item["Id"]}/Images/Primary', raw=True), item
         logs = run('docker', 'logs', container)
-        assert 'Loaded plugin: Bookshelf 14.0.0.0' in logs
+        assert f'Loaded plugin: Bookshelf {PLUGIN_VERSION}' in logs
         assert 'Error creating' not in logs and 'MissingMethodException' not in logs and 'TypeLoadException' not in logs, logs
         print('PASS: Jellyfin 12.3; plugin active; configuration read/write; embedded reader extension; CBZ/CBR/EPUB/PDF scan; CBZ/CBR/EPUB covers; local metadata.', flush=True)
         if args.keep:

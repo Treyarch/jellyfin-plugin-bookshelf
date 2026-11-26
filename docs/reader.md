@@ -1,9 +1,19 @@
-# Vertical mode in the existing Jellyfin reader
+# Bookshelf reader controls
 
 Install Bookshelf through the same plugin installation process as before. There
 is no replacement reader, separate library page, APK, or customized web build to
 install. Open books normally and use the added **Vertical scrolling** icon in the
-existing toolbar. All existing reader icons and paged controls remain in place.
+existing toolbar. Use **First page** and **Last page** beside **Previous** and
+**Next** to jump to either end of the book in both reading modes.
+
+- In a double-page comic, **First page** and **Last page** open the spread
+  containing the requested page.
+- In vertical mode, **Last page** opens at the top of the final comic or PDF
+  page. For EPUBs it shows the last screenful of the book.
+- Jumps update the saved reading position, and both buttons remain available
+  at either end of the book.
+
+## Vertical mode
 
 - Comics: the original single/double-page icon keeps its behavior and exits
   vertical mode when used. Toggling vertical mode off returns to the paged layout.
@@ -30,8 +40,8 @@ removes the extension after refreshing the client.
 ## How delivery works
 
 The plugin adds a small script/stylesheet to the server's web entry response in
-memory. It extends the existing reader classes when Jellyfin loads them, adds one
-icon beside the existing controls, and uses the original reader for all paged
+memory. It extends the existing reader classes when Jellyfin loads them, adds
+three buttons to the existing toolbar, and uses the original reader for paged
 behavior. Jellyfin web files on disk are not modified.
 
 Jellyfin does not offer a public reader-mode extension API. This adapter therefore
@@ -65,9 +75,11 @@ fractional progress, navigation, and the lazy-module hook's push chain.
 Browser checks use stock Jellyfin web, the normal book-opening flow and the
 original toolbar. No standalone reader or custom web files are used.
 
-Verified on stock 12.3 web: comic and PDF page boundaries measured 0 pixels;
-vertical → original double-page control → vertical retained the same comic scroll
-offset; EPUB toggled between its existing paginated view and continuous flow with
-its original toolbar. The JavaScript suite has 7 passing tests; the server suite
-has 78. Android hardware, Safari and coexistence with other HTML-injection plugins
-have not been tested.
+Browser checks on stock 12.3 web verified first and last jumps for comics, PDFs,
+and EPUBs in both reading modes. Checks also covered right-to-left comics,
+double-page spreads, tall and short final pages, and EPUB resume after jumping.
+Comic and PDF page boundaries measured 0 pixels in vertical mode. Toggling
+through the original double-page control retained the comic scroll offset.
+The JavaScript suite has 8 passing tests and the server suite has 78. Android
+hardware, Safari and coexistence with other HTML-injection plugins have not been
+tested.

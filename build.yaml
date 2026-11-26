@@ -1,7 +1,7 @@
 ---
 name: "Bookshelf"
 guid: "9c4e63f1-031b-4f25-988b-4f7d78a8b53e"
-version: 14
+version: "14.1.0.0"
 targetAbi: "12.3.0.0"
 framework: "net10.0"
 owner: "jellyfin"
@@ -14,6 +14,4 @@ artifacts:
   - "Jellyfin.Plugin.Bookshelf.dll"
   - "SharpCompress.dll"
 changelog: |-
-  - Jellyfin 12.3 and .NET 10 compatibility
-  - Update archive APIs and asynchronous metadata reads
-  - Add vertical scrolling to the existing book readers
+  - Add First Page and Last Page buttons for comics, PDFs, and EPUBs in paged and vertical modes

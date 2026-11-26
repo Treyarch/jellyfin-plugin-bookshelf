@@ -4,6 +4,9 @@ import { JSDOM } from 'jsdom';
 import { install, patchBookReader, patchComicReader } from '../src/scroll.js';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
+const navigation = '<button class="paper-icon-button-light"><span class="material-icons navigate_before"></span></button><button class="paper-icon-button-light"><span class="material-icons navigate_next"></span></button><div class="bookOsdSpacer"></div>';
+const firstPage = reader => reader.mediaElement.querySelector('.bookshelf-first-page-button');
+const lastPage = reader => reader.mediaElement.querySelector('.bookshelf-last-page-button');
 
 function environment() {
     const dom = new JSDOM('<!doctype html><body></body>');
@@ -30,7 +33,7 @@ function environment() {
     class Reader {
         constructor() {
             this.mediaElement = document.createElement('div');
-            this.mediaElement.innerHTML = '<div class="bookOsdRow"></div><div class="bookOsdRow"><button class="paper-icon-button-light"><span class="material-icons devices_fold"></span></button><button><span class="material-icons fullscreen"></span></button></div><div class="swiper"></div>';
+            this.mediaElement.innerHTML = `<div class="bookOsdRow"></div><div class="bookOsdRow">${navigation}<button><span class="material-icons devices_fold"></span></button><button><span class="material-icons fullscreen"></span></button></div><div class="swiper"></div>`;
             document.body.appendChild(this.mediaElement);
             this.currentPage = 0;
             this.comicsPlayerSettings = { pagesPerView: 1, langDir: 'ltr' };
@@ -54,17 +57,53 @@ function environment() {
     return { dom, Reader };
 }
 
-test('keeps the existing icons and paged behavior, adding one vertical button', async () => {
+test('keeps the existing icons and paged behavior, adding the reader buttons', async () => {
     const { dom, Reader } = environment();
     const reader = new Reader();
     const icon = reader.mediaElement.querySelector('.devices_fold');
     await reader.setCurrentSrc(reader.mediaElement, { startPositionTicks: 0 });
     assert.equal(reader.mediaElement.querySelector('.devices_fold'), icon);
     assert.equal(reader.mediaElement.querySelectorAll('.bookshelf-vertical-button').length, 1);
+    assert.ok(firstPage(reader).nextElementSibling.querySelector('.navigate_before'));
+    assert.ok(lastPage(reader).previousElementSibling.querySelector('.navigate_next'));
     reader.next();
     assert.equal(reader.currentTime(), 1);
     reader.onViewChanged();
     assert.equal(reader.comicsPlayerSettings.pagesPerView, 2);
+    reader.stop();
+    dom.window.close();
+});
+
+test('comic jumps use source order in paged RTL and return to the top of a vertical page', async () => {
+    const { dom, Reader } = environment();
+    const reader = new Reader();
+    reader.comicsPlayerSettings.langDir = 'rtl';
+    const slides = [];
+    reader.swiperInstance.slideTo = page => { slides.push(page); };
+    const reported = [];
+    reader._callbacks = { pause: [() => { reported.push(reader.currentTime()); }] };
+    await reader.setCurrentSrc(reader.mediaElement, { startPositionTicks: 0 });
+
+    lastPage(reader).click();
+    firstPage(reader).click();
+    assert.deepEqual(slides, [1, 0]);
+
+    reader.mediaElement.querySelector('.bookshelf-vertical-button').click();
+    await tick();
+    const pages = reader.mediaElement.querySelector('.bookPages');
+    lastPage(reader).click();
+    assert.equal(pages.scrollTop, 1200);
+    pages.scrollTop = 1600;
+    lastPage(reader).click();
+    assert.equal(pages.scrollTop, 1200);
+    const lastFrame = pages.lastElementChild;
+    Object.defineProperty(lastFrame, 'offsetHeight', { value: 600 });
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+    assert.equal(lastFrame.style.marginBottom, '300px');
+    firstPage(reader).click();
+    assert.equal(pages.scrollTop, 0);
+    assert.deepEqual(reported.slice(-3), [1, 1, 0]);
+    assert.deepEqual(slides, [1, 0]);
     reader.stop();
     dom.window.close();
 });
@@ -127,13 +166,13 @@ test('vertical page navigation scrolls the existing view and returning to it kee
     dom.window.close();
 });
 
-test('PDF vertical mode uses the same document and restores the original canvas reader', async () => {
+test('PDF jumps report progress in both modes and vertical mode restores the original canvas reader', async () => {
     const { dom } = environment();
     dom.window.HTMLCanvasElement.prototype.getContext = () => ({});
     class Pdf {
         constructor() {
             this.mediaElement = document.createElement('div');
-            this.mediaElement.innerHTML = '<div class="bookOsdRow"></div><div class="bookOsdRow"><button><span class="material-icons fullscreen"></span></button></div><div id="container"><canvas id="canvas"></canvas></div>';
+            this.mediaElement.innerHTML = `<div class="bookOsdRow"></div><div class="bookOsdRow">${navigation}<button><span class="material-icons fullscreen"></span></button></div><div id="container"><canvas id="canvas"></canvas></div>`;
             document.body.appendChild(this.mediaElement);
             this.item = { ServerId: 'server', Id: 'pdf' };
             this.book = { numPages: 2, getPage: async () => ({ getViewport: ({ scale }) => ({ width: 600 * scale, height: 900 * scale }), render: () => ({ promise: Promise.resolve(), cancel() {} }) }) };
@@ -152,36 +191,59 @@ test('PDF vertical mode uses the same document and restores the original canvas 
     const reader = new Pdf();
     const documentReference = reader.book;
     const canvas = reader.mediaElement.querySelector('#canvas');
+    const reported = [];
+    reader._callbacks = { pause: [() => { reported.push(reader.currentTime()); }] };
     await reader.setCurrentSrc(reader.mediaElement, { startPositionTicks: 0 });
+    lastPage(reader).click();
+    assert.equal(reader.restored, 2);
+    assert.equal(reported.at(-1), 1);
+    firstPage(reader).click();
+    assert.equal(reader.restored, 1);
+    assert.equal(reported.at(-1), 0);
     reader.mediaElement.querySelector('.bookshelf-vertical-button').click();
     await tick();
     assert.equal(reader.book, documentReference);
     assert.equal(reader.mediaElement.querySelector('#container').style.display, 'none');
+    lastPage(reader).click();
+    assert.equal(reader.mediaElement.querySelector('.bookPages').scrollTop, 1200);
+    assert.equal(reported.at(-1), 1);
     reader.mediaElement.querySelector('.bookshelf-vertical-button').click();
     assert.equal(reader.mediaElement.querySelector('#canvas'), canvas);
     assert.equal(reader.mediaElement.querySelector('#container').style.display, '');
-    assert.equal(reader.restored, 1);
+    assert.equal(reader.restored, 2);
     reader.stop();
     dom.window.close();
 });
 
-test('EPUB mode switches the existing renderer flow and preserves theme and font size', async () => {
+test('EPUB jumps reach the spine endpoints in both flows and preserve theme and font size', async () => {
     const { dom } = environment();
     class Book {
         constructor() {
             this.mediaElement = document.createElement('div');
-            this.mediaElement.innerHTML = '<div class="bookOsdRow"></div><div class="bookOsdRow"><button><span class="material-icons text_increase"></span></button></div><div id="bookPlayerContainer"></div>';
+            this.mediaElement.innerHTML = `<div class="bookOsdRow"></div><div class="bookOsdRow">${navigation}<button><span class="material-icons text_increase"></span></button></div><div id="bookPlayerContainer"></div>`;
             document.body.appendChild(this.mediaElement);
             this.item = { ServerId: 'server', Id: 'epub' };
             this.theme = 'sepia'; this.fontSize = 'large';
-            const book = { locations: { cfiFromPercentage: () => 'resume', percentageFromCfi: () => 0.5 }, renderTo: (container, options) => {
-                this.options = options;
-                return { book, currentLocation: () => ({ start: { cfi: 'saved-cfi' } }), destroy() {}, on() {}, display: async target => { this.target = target; } };
-            } };
+            const book = {
+                spine: { first: () => ({ href: 'first.xhtml' }), last: () => ({ href: 'last.xhtml' }) },
+                locations: { cfiFromPercentage: () => 'resume', percentageFromCfi: cfi => cfi === 'last-cfi' ? 0.75 : 0 },
+                renderTo: (container, options) => {
+                    this.options = options;
+                    const viewport = { scrollWidth: 1800, scrollHeight: 2400, scrollLeft: 0, scrollTop: 0 };
+                    const settings = { axis: options.manager ? 'vertical' : 'horizontal', direction: 'rtl', rtlScrollType: 'negative' };
+                    let onRelocated;
+                    return {
+                        book, manager: { container: viewport, settings }, currentLocation: () => ({ start: { cfi: 'saved-cfi' } }), destroy() {},
+                        on(event, callback) { if (event === 'relocated') onRelocated = callback; },
+                        display: async target => { this.target = target; },
+                        reportLocation: async () => { onRelocated?.({ start: { cfi: viewport.scrollTop ? 'last-cfi' : 'first-cfi' } }); }
+                    };
+                }
+            };
             this.rendition = book.renderTo(null, {});
         }
         setCurrentSrc() { this.loaded = true; return Promise.resolve(); }
-        currentTime() { return 500; }
+        currentTime() { return this.progress * 1000; }
         stop() { this.mediaElement.remove(); this.mediaElement = null; }
         next() {} previous() {} addSwipeGestures() {} openTableOfContents() {} bindEvents() {} unbindEvents() {}
         setTheme(theme, fontSize) { this.appliedTheme = [theme, fontSize]; }
@@ -190,6 +252,14 @@ test('EPUB mode switches the existing renderer flow and preserves theme and font
     const reader = new Book();
     const icon = reader.mediaElement.querySelector('.text_increase');
     await reader.setCurrentSrc(reader.mediaElement, { startPositionTicks: 0 });
+    lastPage(reader).click();
+    await tick();
+    assert.equal(reader.target, 'last.xhtml');
+    assert.equal(reader.rendition.manager.container.scrollLeft, -1800);
+    firstPage(reader).click();
+    await tick();
+    assert.equal(reader.target, 'first.xhtml');
+    assert.equal(reader.rendition.manager.container.scrollLeft, 0);
     reader.mediaElement.querySelector('.bookshelf-vertical-button').click();
     await tick();
     assert.equal(reader.options.manager, 'continuous');
@@ -197,6 +267,16 @@ test('EPUB mode switches the existing renderer flow and preserves theme and font
     assert.equal(reader.target, 'saved-cfi');
     assert.deepEqual(reader.appliedTheme, ['sepia', 'large']);
     assert.equal(reader.mediaElement.querySelector('.text_increase'), icon);
+    lastPage(reader).click();
+    await tick();
+    assert.equal(reader.target, 'last.xhtml');
+    assert.equal(reader.rendition.manager.container.scrollTop, 2400);
+    assert.equal(reader.currentTime(), 750);
+    firstPage(reader).click();
+    await tick();
+    assert.equal(reader.target, 'first.xhtml');
+    assert.equal(reader.rendition.manager.container.scrollTop, 0);
+    assert.equal(reader.currentTime(), 0);
     reader.mediaElement.querySelector('.bookshelf-vertical-button').click();
     await tick();
     assert.equal(reader.options.flow, 'paginated');

@@ -15,6 +15,7 @@ function dispose(state) {
     state.view?.destroy();
     state.root?.remove();
     state.button?.remove();
+    state.jumpButtons?.forEach(button => button.remove());
     state.active = false;
 }
 
@@ -24,6 +25,12 @@ function setChoice(player, state, enabled) {
         state.settings.verticalScrolling = enabled;
         try { localStorage.setItem(state.key, String(enabled)); } catch { /* Reader still works if storage is disabled. */ }
     }
+}
+
+function setModeChanging(state, changing) {
+    state.changingMode = changing;
+    if (state.button) state.button.disabled = changing;
+    state.jumpButtons?.forEach(button => { button.disabled = changing; });
 }
 
 function stopScrolling(player, state) {
@@ -77,7 +84,7 @@ async function startScrolling(player, state, position) {
     state.abort?.abort();
     state.abort = new AbortController();
     const { signal } = state.abort;
-    if (state.button) state.button.disabled = true;
+    setModeChanging(state, true);
     try {
         const urls = player.archiveSource?.urls;
         if (!state.sizes) {
@@ -148,39 +155,105 @@ async function startScrolling(player, state, position) {
         if (!signal.aborted) {
             console.error('[Bookshelf] Vertical mode could not start', error);
             if (state.active) stopScrolling(player, state);
-            if (state.button) state.button.disabled = false;
+            setModeChanging(state, false);
         }
     } finally {
-        if (state.button && generation === state.generation) state.button.disabled = false;
+        if (generation === state.generation) setModeChanging(state, false);
     }
 }
 
-function addButton(player, state) {
-    const row = player.mediaElement?.querySelectorAll('.bookOsdRow')[1];
-    if (!row || state.button) return;
-    const template = row.querySelector('button');
-    if (!template) return;
-    const button = state.button = document.createElement('button');
+function toolbarButton(template, className, iconName, title, onClick) {
+    const button = document.createElement('button');
     button.type = 'button';
-    button.className = template.className + ' bookshelf-vertical-button';
-    const language = document.documentElement.lang || navigator.language;
-    button.title = language.startsWith('fr') ? 'Défilement vertical' : 'Vertical scrolling';
-    button.setAttribute('aria-label', button.title);
-    button.setAttribute('aria-pressed', String(state.active));
+    button.className = `${template.className} ${className}`;
+    button.title = title;
+    button.setAttribute('aria-label', title);
     const icon = document.createElement('span');
-    icon.className = 'material-icons view_day';
+    icon.className = `material-icons ${iconName}`;
     icon.setAttribute('aria-hidden', 'true');
     button.appendChild(icon);
-    button.addEventListener('click', () => {
-        if (state.active) stopScrolling(player, state);
-        else void startScrolling(player, state);
-    });
-    const fullscreen = [...row.querySelectorAll('button')].find(node => node.querySelector('.fullscreen, .fullscreen_exit'));
-    row.insertBefore(button, fullscreen || null);
-    state.observer?.disconnect();
+    button.addEventListener('click', onClick);
+    return button;
 }
 
-/** Extend only the existing comic reader; leave its paged renderer and React controls intact. */
+function addButtons(player, state) {
+    if (state.jumpButtons) return;
+    const row = player.mediaElement?.querySelectorAll('.bookOsdRow')[1];
+    const template = row?.querySelector('button');
+    if (!template) return;
+    const french = (document.documentElement.lang || navigator.language).startsWith('fr');
+
+    if (!state.button) {
+        const button = state.button = toolbarButton(template, 'bookshelf-vertical-button', 'view_day', french ? 'Défilement vertical' : 'Vertical scrolling', () => {
+            if (state.active) stopScrolling(player, state);
+            else void startScrolling(player, state);
+        });
+        button.setAttribute('aria-pressed', String(state.active));
+        const fullscreen = row.querySelector('.fullscreen, .fullscreen_exit')?.closest('button');
+        row.insertBefore(button, fullscreen || null);
+    }
+
+    const previous = row.querySelector('.navigate_before')?.closest('button');
+    const next = row.querySelector('.navigate_next')?.closest('button');
+    if (!previous || !next) return;
+    const first = toolbarButton(previous, 'bookshelf-first-page-button', 'first_page', french ? 'Première page' : 'First page', () => jumpToPage(player, state, false));
+    const last = toolbarButton(next, 'bookshelf-last-page-button', 'last_page', french ? 'Dernière page' : 'Last page', () => jumpToPage(player, state, true));
+    previous.before(first);
+    next.after(last);
+    state.jumpButtons = [first, last];
+    setModeChanging(state, Boolean(state.changingMode));
+    state.observer.disconnect();
+}
+
+function jumpToPage(player, state, last) {
+    if (state.kind === 'epub') {
+        void jumpToEpubPage(player, state, last);
+        return;
+    }
+    const count = state.kind === 'pdf' ? player.book.numPages : player.archiveSource.urls.length;
+    const page = last ? count - 1 : 0;
+    if (state.active) {
+        state.view.goTo(page);
+    } else if (state.kind === 'pdf') {
+        player.loadPage(page + 1);
+        player.progress = page;
+        state.position = { page, offset: 0 };
+        progress(player);
+    } else {
+        // Swiper reports progress from its existing slideChange handler.
+        player.swiperInstance.slideTo(page);
+    }
+}
+
+async function jumpToEpubPage(player, state, last) {
+    const rendition = player.rendition;
+    const spine = rendition.book.spine;
+    const section = last ? spine.last() : spine.first();
+    if (!section) return;
+    const jump = state.jump = {};
+    try {
+        await rendition.display(section.href);
+        if (state.jump !== jump || player.rendition !== rendition || states.get(player) !== state) return;
+
+        // Use the rendered extent so the jump also works for sections with no text locations.
+        const { container, settings } = rendition.manager;
+        if (settings.axis === 'vertical') {
+            container.scrollTop = last ? container.scrollHeight : 0;
+        } else {
+            const rtl = settings.direction === 'rtl';
+            const startsAtPositiveEnd = rtl && settings.rtlScrollType === 'default';
+            const sign = rtl && settings.rtlScrollType === 'negative' ? -1 : 1;
+            container.scrollLeft = last !== startsAtPositiveEnd ? sign * container.scrollWidth : 0;
+        }
+        await rendition.reportLocation();
+    } catch (error) {
+        if (state.jump === jump && player.rendition === rendition && states.get(player) === state) {
+            console.error('[Bookshelf] Unable to jump to EPUB page', error);
+        }
+    }
+}
+
+/** Extend the existing comic reader and reuse its paged renderer. */
 export function patchComicReader(Reader) {
     const proto = Reader?.prototype;
     if (!proto?.getImgFromUrl || !proto.changeView || !proto.onViewChanged || proto[patched]) return;
@@ -194,9 +267,9 @@ export function patchComicReader(Reader) {
         states.set(this, state);
         await original.setCurrentSrc.call(this, element, { ...options, startPositionTicks: Math.floor(value) * 10000 });
         if (states.get(this) !== state || !this.mediaElement || !this.swiperInstance || !this.archiveSource.urls.length) return;
-        state.observer = new MutationObserver(() => addButton(this, state));
+        state.observer = new MutationObserver(() => addButtons(this, state));
         state.observer.observe(this.mediaElement, { childList: true, subtree: true });
-        addButton(this, state);
+        addButtons(this, state);
         this.swiperInstance.on('slideChange', () => {
             if (!state.active) state.position = { page: this.currentPage, offset: 0 };
         });
@@ -251,7 +324,7 @@ async function renderPdf(player, state, index, signal) {
 
 async function setEpubScrolling(player, state, enabled) {
     const generation = ++state.generation;
-    if (state.button) state.button.disabled = true;
+    setModeChanging(state, true);
     const book = player.rendition.book;
     const location = player.rendition.currentLocation()?.start?.cfi || book.locations.cfiFromPercentage(player.progress || 0);
     player.unbindEvents();
@@ -276,11 +349,11 @@ async function setEpubScrolling(player, state, enabled) {
     } catch (error) {
         if (generation === state.generation) console.error('[Bookshelf] Unable to change EPUB mode', error);
     } finally {
-        if (generation === state.generation && state.button) state.button.disabled = false;
+        if (generation === state.generation) setModeChanging(state, false);
     }
 }
 
-/** Add only a vertical toggle to the stock PDF and EPUB readers. */
+/** Extend the stock PDF and EPUB readers. */
 export function patchBookReader(Reader) {
     const proto = Reader?.prototype;
     const kind = proto?.setTheme && proto?.openTableOfContents ? 'epub' : proto?.renderPage && proto?.loadPage ? 'pdf' : null;
@@ -297,9 +370,9 @@ export function patchBookReader(Reader) {
         if (states.get(this) !== state || !this.mediaElement || !this.loaded) return;
         state.key = `bookshelfVertical:${this.item.ServerId}:${this.item.Id}`;
         try { state.settings.verticalScrolling = localStorage.getItem(state.key) === 'true'; } catch { /* Optional preference. */ }
-        state.observer = new MutationObserver(() => addButton(this, state));
+        state.observer = new MutationObserver(() => addButtons(this, state));
         state.observer.observe(this.mediaElement, { childList: true, subtree: true });
-        addButton(this, state);
+        addButtons(this, state);
         if (state.settings.verticalScrolling) await startScrolling(this, state, state.position);
     };
     proto.currentTime = function () {

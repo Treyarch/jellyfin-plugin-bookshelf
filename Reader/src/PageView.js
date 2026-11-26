@@ -32,7 +32,14 @@ export default class PageView {
         this.frames.forEach(frame => {
             this.observer.observe(frame.element);
         });
+        this.padAfterLastPage();
         this.goTo(this.page, offset);
+    }
+
+    padAfterLastPage() {
+        // Let a short last page reach the top of the viewport.
+        const last = this.frames[this.frames.length - 1]?.element;
+        if (last) last.style.marginBottom = `${Math.max(0, this.container.clientHeight - last.offsetHeight)}px`;
     }
 
     async load(index) {
@@ -97,6 +104,7 @@ export default class PageView {
 
     onResize() {
         const { page, offset } = { page: this.page, offset: this.offset };
+        this.padAfterLastPage();
         const loaded = this.frames.map((frame, index) => frame.result || frame.loading ? index : -1).filter(index => index >= 0);
         loaded.forEach(index => {
             this.unload(index);
